@@ -20,14 +20,19 @@ class Post {
   }
 }
 
-Future<Post> pegaPost() async {
+Future<List<Post>> pegaPost() async {
   final response =
-      await http.get(Uri.parse("https://jsonplaceholder.typicode.com/posts/1"));
+      await http.get(Uri.parse("https://jsonplaceholder.typicode.com/posts"));
   if (response.statusCode == 200) {
-    return Post.fromJson(json.decode(response.body));
+    return parsePost(response.body);
   } else {
     throw Exception("Falha na requisição");
   }
+}
+
+List<Post> parsePost(String responseBody) {
+  var parsed = jsonDecode(responseBody).cast<Map<String, dynamic>>();
+  return parsed.map<Post>((json) => Post.fromJson(json)).toList();
 }
 
 class testPage extends StatefulWidget {
@@ -35,14 +40,32 @@ class testPage extends StatefulWidget {
   _testPage createState() => _testPage();
 }
 
+class PostList extends StatelessWidget {
+  final List<Post>? posts;
+
+  PostList({this.posts});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+        itemCount: posts?.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+              leading: Icon(Icons.abc),
+              title: Text("${posts?[index].title}"),
+              subtitle: Text("${posts?[index].body}"));
+        });
+  }
+}
+
 class _testPage extends State<testPage> {
-  Future<Post>? post;
+  Future<List<Post>>? posts;
 
   @override
   void initState() {
     super.initState();
 
-    post = pegaPost();
+    posts = pegaPost();
   }
 
   @override
@@ -52,15 +75,14 @@ class _testPage extends State<testPage> {
         title: const Text("Pagina de teste"),
       ),
       body: Center(
-        child: FutureBuilder<Post>(
-          future: post,
+        child: FutureBuilder<List<Post>>(
+          future: posts,
           builder: (context, snapshot) {
             if (snapshot.hasData) {
-              return Text("${snapshot.data?.title}");
-            } else if (snapshot.hasError) {
-              throw Exception(snapshot.error);
+              return PostList(posts: snapshot.data);
             }
-            return const CircularProgressIndicator();
+
+            return CircularProgressIndicator();
           },
         ),
       ),
